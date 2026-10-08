@@ -1,5 +1,5 @@
 import os
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict , field
 
 import tree_sitter_python as tspython
 import tree_sitter_javascript as tsjavascript
@@ -16,7 +16,8 @@ class Chunk:
     start_line: int
     end_line: int
     code: str
-
+    commits: list = field(default_factory=list)
+    
     def to_dict(self):
         return asdict(self)
 
