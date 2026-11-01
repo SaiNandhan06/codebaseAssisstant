@@ -1,9 +1,37 @@
+"""
+parse.py — Multi-language AST parser using tree-sitter.
+
+Extracts classes, methods, and functions as Chunk objects from source files.
+Supports: Python, JavaScript, TypeScript/TSX, Java, Go.
+"""
+
 import os
-from dataclasses import dataclass, asdict , field
+from dataclasses import dataclass, asdict, field
 
 import tree_sitter_python as tspython
 import tree_sitter_javascript as tsjavascript
 from tree_sitter import Language, Parser
+
+# ── Optional grammars (installed separately) ──────────────────────
+
+try:
+    import tree_sitter_typescript as tstypescript
+    _HAS_TS = True
+except ImportError:
+    _HAS_TS = False
+
+try:
+    import tree_sitter_java as tsjava
+    _HAS_JAVA = True
+except ImportError:
+    _HAS_JAVA = False
+
+try:
+    import tree_sitter_go as tsgo
+    _HAS_GO = True
+except ImportError:
+    _HAS_GO = False
+
 
 @dataclass
 class Chunk:
@@ -17,9 +45,14 @@ class Chunk:
     end_line: int
     code: str
     commits: list = field(default_factory=list)
-    
+    commit_sha: str | None = None
+    repo_url: str | None = None
+
     def to_dict(self):
         return asdict(self)
+
+
+# ── Language configuration table ─────────────────────────────────
 
 LANGUAGES = {
     ".py": {
@@ -36,6 +69,46 @@ LANGUAGES = {
         "classes": {"class_declaration"},
     },
 }
+
+# Add TypeScript/TSX if available
+if _HAS_TS:
+    _ts_lang = Language(tstypescript.language_typescript())
+    _tsx_lang = Language(tstypescript.language_tsx())
+    LANGUAGES[".ts"] = {
+        "name": "typescript",
+        "parser": Parser(_ts_lang),
+        "functions": {"function_declaration", "function_expression",
+                      "arrow_function", "method_definition"},
+        "classes": {"class_declaration"},
+    }
+    LANGUAGES[".tsx"] = {
+        "name": "tsx",
+        "parser": Parser(_tsx_lang),
+        "functions": {"function_declaration", "function_expression",
+                      "arrow_function", "method_definition"},
+        "classes": {"class_declaration"},
+    }
+
+# Add Java if available
+if _HAS_JAVA:
+    LANGUAGES[".java"] = {
+        "name": "java",
+        "parser": Parser(Language(tsjava.language())),
+        "functions": {"method_declaration", "constructor_declaration"},
+        "classes": {"class_declaration", "interface_declaration", "enum_declaration"},
+    }
+
+# Add Go if available
+if _HAS_GO:
+    LANGUAGES[".go"] = {
+        "name": "go",
+        "parser": Parser(Language(tsgo.language())),
+        "functions": {"function_declaration", "method_declaration"},
+        "classes": set(),  # Go doesn't have classes; struct types are detected below
+    }
+
+
+# ── AST walking ──────────────────────────────────────────────────
 
 def _text(source, node):
     return source[node.start_byte:node.end_byte].decode("utf8", errors="replace")
@@ -54,6 +127,17 @@ def _get_name(node, source):
     return None, node
 
 def _walk(node, source, cfg, rel_path, parent_class, chunks):
+    # Go struct types (no classes in Go)
+    if cfg["name"] == "go" and node.type == "type_declaration":
+        for child in node.children:
+            if child.type == "type_spec":
+                name_node = child.child_by_field_name("name")
+                type_node = child.child_by_field_name("type")
+                if name_node and type_node and type_node.type == "struct_type":
+                    name = _text(source, name_node)
+                    chunks.append(_make_chunk(child, source, cfg, rel_path, "class", name, None))
+        return
+
     if node.type in cfg["classes"]:
         name, span = _get_name(node, source)
         if name:

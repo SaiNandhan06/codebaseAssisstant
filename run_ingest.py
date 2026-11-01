@@ -27,4 +27,4 @@ for c in chunks[:8]:
     owner = f"{c.parent}." if c.parent else ""
     print(f"  [{c.kind}] {owner}{c.name}  {c.file_path}:{c.start_line}-{c.end_line}")
     for commit in c.commits[:2]:
-        print(f"      {commit['hash']} {commit['date']} {commit['message']}")
+        print(f"    {commit['hash']} {commit['date']} {commit['message']}")
