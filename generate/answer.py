@@ -5,6 +5,8 @@ query rewriting for follow-ups, and citation validation.
 
 import os
 import re
+import time
+import logging
 
 from dotenv import load_dotenv
 from google import genai
@@ -18,9 +20,53 @@ from generate.prompts import (
 )
 
 load_dotenv()
+logger = logging.getLogger(__name__)
 
 _client = genai.Client()
-GEN_MODEL = os.getenv("GEN_MODEL", "gemini-3.5-flash")
+GEN_MODEL = os.getenv("GEN_MODEL", "gemini-2.5-flash")
+
+
+def _generate_with_retry(contents, config=None):
+    """Wrapper around Gemini generate_content with backoff retry for 503 / 429."""
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            return _client.models.generate_content(
+                model=GEN_MODEL,
+                contents=contents,
+                config=config,
+            )
+        except Exception as e:
+            msg = str(e)
+            if ("503" in msg or "429" in msg or "UNAVAILABLE" in msg or "RESOURCE_EXHAUSTED" in msg) and attempt < max_retries - 1:
+                delay = 2.0 * (attempt + 1)
+                logger.warning(f"Gemini API transient error ({e}), retrying in {delay}s...")
+                time.sleep(delay)
+                continue
+            raise
+
+
+def _stream_with_retry(contents, config=None, max_retries=3):
+    """Stream tokens from Gemini with backoff retry on transient 503/429 errors."""
+    for attempt in range(max_retries):
+        try:
+            stream = _client.models.generate_content_stream(
+                model=GEN_MODEL,
+                contents=contents,
+                config=config,
+            )
+            for chunk in stream:
+                if chunk.text:
+                    yield chunk.text
+            return
+        except Exception as e:
+            msg = str(e)
+            if ("503" in msg or "429" in msg or "UNAVAILABLE" in msg or "RESOURCE_EXHAUSTED" in msg) and attempt < max_retries - 1:
+                delay = 2.0 * (attempt + 1)
+                logger.warning(f"Gemini API transient stream error ({e}), retrying in {delay}s (attempt {attempt+1}/{max_retries})...")
+                time.sleep(delay)
+                continue
+            raise
 
 # ── Citation regex ────────────────────────────────────────────────
 
@@ -74,8 +120,7 @@ def _rewrite_query(question: str, history: list[dict]) -> str:
     )
     prompt = REWRITE_PROMPT.format(history=conversation, question=question)
 
-    response = _client.models.generate_content(
-        model=GEN_MODEL,
+    response = _generate_with_retry(
         contents=prompt,
     )
     rewritten = response.text.strip()
@@ -136,8 +181,7 @@ def answer(
     # Generate
     user_prompt = build_prompt(question, top_chunks, history)
 
-    response = _client.models.generate_content(
-        model=GEN_MODEL,
+    response = _generate_with_retry(
         contents=user_prompt,
         config=genai.types.GenerateContentConfig(
             system_instruction=SYSTEM_PROMPT,
@@ -200,20 +244,16 @@ def answer_stream(
     user_prompt = build_prompt(question, top_chunks, history)
 
     full_text = ""
-    response = _client.models.generate_content_stream(
-        model=GEN_MODEL,
+    for token in _stream_with_retry(
         contents=user_prompt,
         config=genai.types.GenerateContentConfig(
             system_instruction=SYSTEM_PROMPT,
             temperature=0.1,
             max_output_tokens=2048,
         ),
-    )
-
-    for chunk in response:
-        if chunk.text:
-            full_text += chunk.text
-            yield {"token": chunk.text}
+    ):
+        full_text += token
+        yield {"token": token}
 
     # Validate citations
     all_citations = _extract_citations(full_text)

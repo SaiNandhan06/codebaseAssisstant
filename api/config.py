@@ -11,7 +11,10 @@ load_dotenv()
 
 API_HOST = os.getenv("API_HOST", "0.0.0.0")
 API_PORT = int(os.getenv("API_PORT", "8000"))
-CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://localhost:3000").split(",")
+CORS_ORIGINS = os.getenv(
+    "CORS_ORIGINS",
+    "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000,http://localhost:8000,http://127.0.0.1:8000"
+).split(",")
 
 # ── Qdrant ────────────────────────────────────────────────────────
 
@@ -20,7 +23,7 @@ QDRANT_PORT = int(os.getenv("QDRANT_PORT", "6333"))
 
 # ── Gemini ────────────────────────────────────────────────────────
 
-GEN_MODEL = os.getenv("GEN_MODEL", "gemini-3.5-flash")
+GEN_MODEL = os.getenv("GEN_MODEL", "gemini-2.5-flash")
 EMBED_MODEL = os.getenv("EMBED_MODEL", "gemini-embedding-001")
 
 # ── Limits ────────────────────────────────────────────────────────
@@ -37,7 +40,7 @@ RATE_LIMIT_WINDOW = int(os.getenv("RATE_LIMIT_WINDOW", "60"))  # seconds
 # ── Reranker ──────────────────────────────────────────────────────
 
 RERANK_MODEL = os.getenv("RERANK_MODEL", "cross-encoder/ms-marco-MiniLM-L6-v2")
-RERANK_THRESHOLD = float(os.getenv("RERANK_THRESHOLD", "0.5"))
+RERANK_THRESHOLD = float(os.getenv("RERANK_THRESHOLD", "-7.5"))
 
 # ── Demo mode ─────────────────────────────────────────────────────
 

@@ -53,10 +53,23 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
+
+
+def _repo_collection_and_chunks(repo_id: str) -> tuple[str, str]:
+    collection = "code_chunks" if repo_id == "codebase-assistant" else f"code_{repo_id}"
+    chunks_file = f"chunks_{repo_id}.json"
+    if not os.path.exists(os.path.join(DATA_DIR, chunks_file)):
+        if os.path.exists(os.path.join(DATA_DIR, "chunks.json")):
+            chunks_file = "chunks.json"
+    return collection, chunks_file
 
 
 # ── Rate limiting ─────────────────────────────────────────────────
@@ -79,9 +92,33 @@ def _check_rate_limit(ip: str):
 
 # ── Endpoints ─────────────────────────────────────────────────────
 
+@app.get("/")
+async def root():
+    return {
+        "name": "Codebase Assistant API",
+        "status": "healthy",
+        "docs_url": "/docs",
+        "frontend_url": "http://localhost:5173",
+        "endpoints": {
+            "health": "/health",
+            "repos": "/repos",
+            "repo_info": "/repos/{repo_id}",
+            "ask_stream": "/repos/{repo_id}/ask/stream",
+        },
+    }
+
+
 @app.get("/health")
 async def health():
     return {"status": "ok", "timestamp": time.time()}
+
+
+@app.get("/debug/collections")
+async def debug_collections():
+    from index.stores import _db
+    db = _db()
+    collections = [c.name for c in db.get_collections().collections]
+    return {"collections": collections}
 
 
 @app.post("/repos", response_model=IngestResponse)
@@ -119,7 +156,7 @@ async def get_repo_info(repo_id: str):
 
 
 @app.post("/repos/{repo_id}/ask", response_model=AskResponse)
-async def ask_question(repo_id: str, req: AskRequest, request: Request):
+def ask_question(repo_id: str, req: AskRequest, request: Request):
     """Ask a question about an indexed repository."""
     _check_rate_limit(request.client.host)
 
@@ -129,8 +166,7 @@ async def ask_question(repo_id: str, req: AskRequest, request: Request):
     if info.get("status") != "ready":
         raise HTTPException(status_code=400, detail="Repository is not ready yet. Current status: " + info.get("status", "unknown"))
 
-    collection = f"code_{repo_id}"
-    chunks_file = f"chunks_{repo_id}.json"
+    collection, chunks_file = _repo_collection_and_chunks(repo_id)
 
     t0 = time.time()
     try:
@@ -150,7 +186,7 @@ async def ask_question(repo_id: str, req: AskRequest, request: Request):
 
 
 @app.post("/repos/{repo_id}/ask/stream")
-async def ask_stream(repo_id: str, req: AskRequest, request: Request):
+def ask_stream(repo_id: str, req: AskRequest, request: Request):
     """Ask with Server-Sent Events streaming."""
     _check_rate_limit(request.client.host)
 
@@ -160,8 +196,7 @@ async def ask_stream(repo_id: str, req: AskRequest, request: Request):
     if info.get("status") != "ready":
         raise HTTPException(status_code=400, detail="Repository is not ready yet")
 
-    collection = f"code_{repo_id}"
-    chunks_file = f"chunks_{repo_id}.json"
+    collection, chunks_file = _repo_collection_and_chunks(repo_id)
 
     def event_stream():
         from generate.answer import answer_stream
@@ -178,7 +213,14 @@ async def ask_stream(repo_id: str, req: AskRequest, request: Request):
                     yield f"data: {json.dumps({'type': 'final', 'content': event['final']})}\n\n"
             yield "data: [DONE]\n\n"
         except Exception as e:
-            yield f"data: {json.dumps({'type': 'error', 'content': str(e)})}\n\n"
+            msg = str(e)
+            if "503" in msg or "UNAVAILABLE" in msg:
+                err_text = "Google Gemini is currently experiencing a temporary high-traffic spike (503 Service Unavailable). Please retry in a few seconds."
+            elif "429" in msg or "RESOURCE_EXHAUSTED" in msg:
+                err_text = "Google Gemini rate limit reached. Please wait a few seconds and try again."
+            else:
+                err_text = f"Error: {msg}"
+            yield f"data: {json.dumps({'type': 'error', 'content': err_text})}\n\n"
 
     return StreamingResponse(
         event_stream(),
@@ -190,7 +232,7 @@ async def ask_stream(repo_id: str, req: AskRequest, request: Request):
 @app.get("/repos/{repo_id}/chunks/{chunk_id:path}")
 async def get_chunk(repo_id: str, chunk_id: str):
     """Get full details for a specific chunk."""
-    chunks_file = f"chunks_{repo_id}.json"
+    _, chunks_file = _repo_collection_and_chunks(repo_id)
 
     try:
         from index.stores import load_chunks

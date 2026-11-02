@@ -12,8 +12,9 @@ RULES:
    "I can't find this in the code. The indexed chunks don't contain information about this topic."
 4. When discussing implementation details, quote or paraphrase the actual code.
 5. If commit history is available, use it to answer "why" or "when" questions.
-6. Be concise but thorough. Prefer bullet points for multi-part answers.
-7. Use Markdown formatting for code snippets and structure."""
+6. For architectural, conceptual, or project overview questions, synthesize the documentation and code chunks to thoroughly explain the project purpose, workflow, and design while citing the relevant markdown and code files.
+7. Be concise but thorough. Prefer structured sections and bullet points for multi-part answers.
+8. Use Markdown formatting for code snippets and structure."""
 
 
 def build_context(chunks: list[dict]) -> str:

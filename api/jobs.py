@@ -21,25 +21,80 @@ DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
 
 # ── Job state ─────────────────────────────────────────────────────
 
-_jobs: dict[str, dict] = {}
+_jobs: dict[str, dict] = {
+    "demo_codebase-assistant": {
+        "job_id": "demo_codebase-assistant",
+        "repo_id": "codebase-assistant",
+        "url": "https://github.com/example/codebase-assistant",
+        "status": "ready",
+        "stage": "done",
+        "percent": 100,
+        "chunk_count": 121,
+        "file_count": 15,
+        "head_sha": "main",
+        "error": None,
+        "languages": {"python": 119, "markdown": 2},
+        "created_at": time.time(),
+    }
+}
 _job_lock = threading.Lock()
 _ingest_lock = threading.Lock()  # one ingest at a time
 
 
+def _discover_persisted_repos():
+    """Discover previously indexed repos from disk chunks files."""
+    if not os.path.exists(DATA_DIR):
+        return
+    for fname in os.listdir(DATA_DIR):
+        if fname.startswith("chunks_") and fname.endswith(".json"):
+            repo_id = fname[len("chunks_"):-len(".json")]
+            job_id = f"persisted_{repo_id}"
+            if job_id not in _jobs and not any(j.get("repo_id") == repo_id for j in _jobs.values()):
+                try:
+                    fpath = os.path.join(DATA_DIR, fname)
+                    with open(fpath, "r", encoding="utf-8") as f:
+                        chunks = json.load(f)
+                    languages = dict(Counter(c.get("language", "unknown") for c in chunks))
+                    files = len(set(c.get("file_path", "") for c in chunks))
+                    url = chunks[0].get("repo_url", f"https://github.com/{repo_id.replace('__', '/')}") if chunks else f"https://github.com/{repo_id.replace('__', '/')}"
+                    head_sha = chunks[0].get("commit_sha", "main") if chunks else "main"
+                    _jobs[job_id] = {
+                        "job_id": job_id,
+                        "repo_id": repo_id,
+                        "url": url,
+                        "status": "ready",
+                        "stage": "done",
+                        "percent": 100,
+                        "chunk_count": len(chunks),
+                        "file_count": files,
+                        "head_sha": head_sha,
+                        "error": None,
+                        "languages": languages,
+                        "created_at": os.path.getmtime(fpath),
+                    }
+                except Exception:
+                    pass
+
+_discover_persisted_repos()
+
+
 def get_job(job_id: str) -> dict | None:
     with _job_lock:
+        _discover_persisted_repos()
         return _jobs.get(job_id, {}).copy() if job_id in _jobs else None
 
 
 def list_repos() -> list[dict]:
     """List all indexed/indexing repos."""
     with _job_lock:
+        _discover_persisted_repos()
         return [v.copy() for v in _jobs.values()]
 
 
 def get_repo(repo_id: str) -> dict | None:
     """Get repo info by repo_id."""
     with _job_lock:
+        _discover_persisted_repos()
         for job in _jobs.values():
             if job.get("repo_id") == repo_id:
                 return job.copy()
@@ -48,14 +103,13 @@ def get_repo(repo_id: str) -> dict | None:
 
 def delete_repo(repo_id: str) -> bool:
     """Delete repo data (Qdrant collection, chunks, clone)."""
-    from qdrant_client import QdrantClient
-    from index.stores import QDRANT_HOST, QDRANT_PORT
+    from index.stores import _db
 
     collection = f"code_{repo_id}"
 
     # Delete Qdrant collection
     try:
-        db = QdrantClient(host=QDRANT_HOST, port=QDRANT_PORT)
+        db = _db()
         if db.collection_exists(collection):
             db.delete_collection(collection)
     except Exception:
