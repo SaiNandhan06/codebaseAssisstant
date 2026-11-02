@@ -1,0 +1,201 @@
+/*
+  Codebase Assistant - component classes
+  Replaces the Vite template styles (.counter, .hero, #next-steps ...), which can be deleted.
+  Keep the import order: index.css first (in main.tsx), then this file (in App.tsx).
+  Everything is in @layer components, so Tailwind utilities (px-2, mt-4 ...) still override it.
+*/
+
+@layer theme, base, components, utilities;
+
+@layer components {
+
+  /* ---------- buttons ---------- */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.95rem;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    font: 500 0.9375rem/1.4 var(--font-sans);
+    cursor: pointer;
+    transition: background-color 0.12s, border-color 0.12s, color 0.12s;
+  }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .btn-primary { background: var(--accent-strong); color: var(--on-accent); }
+  .btn-primary:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--accent-strong) 88%, black);
+  }
+
+  .btn-ghost { background: transparent; color: var(--ink); border-color: var(--line-strong); }
+  .btn-ghost:hover:not(:disabled) { background: var(--sunken); }
+
+  /* ---------- inputs ---------- */
+  .input {
+    width: 100%;
+    padding: 0.6rem 0.8rem;
+    background: var(--surface);
+    color: var(--ink);
+    border: 1px solid var(--line-strong);
+    border-radius: 8px;
+    font: inherit;
+    transition: border-color 0.12s;
+  }
+  .input:hover { border-color: var(--ink-faint); }
+  .input:focus { border-color: var(--accent-strong); }
+
+  /* ---------- surfaces (borders carry structure, no shadows) ---------- */
+  .panel        { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+  .panel-sunken { background: var(--sunken);  border: 1px solid var(--line); border-radius: 12px; }
+
+  /* ---------- status badge: <span class="badge" data-status="ready"> ---------- */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.1rem 0.6rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    color: var(--ink-muted);
+    font-size: 0.8125rem;
+    line-height: 1.5;
+  }
+  .badge::before {
+    content: "";
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+  .badge[data-status="ready"]    { color: var(--ok); }
+  .badge[data-status="indexing"] { color: var(--warn); }
+  .badge[data-status="failed"]   { color: var(--danger); }
+
+  /* ---------- chat ---------- */
+  .msg-user {
+    align-self: flex-end;
+    max-width: 80%;
+    padding: 0.6rem 0.9rem;
+    background: var(--sunken);
+    border-radius: 14px;
+  }
+
+  /* Assistant answers read like a written note: serif, generous leading, capped line length */
+  .answer {
+    max-width: 68ch;
+    font-family: var(--font-serif);
+    font-size: 1.0625rem;
+    line-height: 1.7;
+  }
+  .answer p { margin: 0 0 0.9em; }
+  .answer ul, .answer ol { margin: 0 0 0.9em; padding-left: 1.4em; }
+  .answer li { margin-bottom: 0.3em; }
+  .answer :not(pre) > code {
+    padding: 0.1em 0.35em;
+    background: var(--sunken);
+    border-radius: 4px;
+    font-size: 0.86em;
+  }
+
+  /* Citation chip: <button class="cite" aria-current="true">parse.py:42-80</button> */
+  .cite {
+    display: inline-flex;
+    align-items: center;
+    margin: 0 0.15rem;
+    padding: 0.2rem 0.4rem;
+    vertical-align: 0.08em;
+    background: var(--sunken);
+    color: var(--ink-muted);
+    border: 1px solid var(--line-strong);
+    border-radius: 4px;
+    font: 0.75rem/1 var(--font-mono);
+    cursor: pointer;
+    transition: background-color 0.12s, border-color 0.12s, color 0.12s;
+  }
+  .cite:hover,
+  .cite[aria-current="true"] {
+    background: var(--accent-soft);
+    border-color: var(--accent-strong);
+    color: var(--accent-strong);
+  }
+
+  /* Streaming caret: <span class="caret" aria-hidden="true"></span> while tokens arrive */
+  .caret {
+    display: inline-block;
+    width: 0.5ch;
+    height: 1.05em;
+    margin-left: 2px;
+    vertical-align: text-bottom;
+    background: var(--accent-strong);
+    animation: caret-blink 1s steps(2, start) infinite;
+  }
+  @keyframes caret-blink { to { visibility: hidden; } }
+
+  /* ---------- notices (low confidence, rate limit, repo too large) ---------- */
+  .notice {
+    padding: 0.75rem 1rem;
+    background: color-mix(in srgb, var(--warn) 9%, transparent);
+    border-left: 3px solid var(--warn);
+    border-radius: 0 8px 8px 0;
+    font-size: 0.9375rem;
+  }
+  .notice[data-tone="danger"] {
+    background: color-mix(in srgb, var(--danger) 9%, transparent);
+    border-left-color: var(--danger);
+  }
+
+  /* ---------- source panel: code with line numbers and cited lines marked ---------- */
+  .code-block {
+    overflow: auto;
+    padding: 0.5rem 0;
+    background: var(--sunken);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    font: 0.8125rem/1.65 var(--font-mono);
+  }
+  .code-line { display: grid; grid-template-columns: 3.5rem 1fr; }
+  .code-line__no {
+    padding-right: 0.9rem;
+    color: var(--ink-faint);
+    text-align: right;
+    user-select: none;
+  }
+  .code-line__text { padding-right: 1rem; white-space: pre; }
+  .code-line--hit {
+    background: var(--accent-soft);
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
+  .code-line--hit .code-line__no { color: var(--accent-strong); }
+
+  /* Commit row: <div class="commit"><span class="commit__hash">a1b2c3d</span><span>message</span><time>2026-03-23</time></div> */
+  .commit {
+    display: grid;
+    grid-template-columns: 4.5rem 1fr auto;
+    gap: 0.75rem;
+    padding: 0.45rem 0;
+    border-top: 1px solid var(--line);
+    font-size: 0.8125rem;
+  }
+  .commit__hash { font-family: var(--font-mono); color: var(--accent-strong); }
+  .commit time  { color: var(--ink-faint); }
+
+  /* ---------- indexing progress ---------- */
+  .progress { height: 4px; background: var(--sunken); border-radius: 2px; overflow: hidden; }
+  .progress > span {
+    display: block;
+    height: 100%;
+    background: var(--accent-strong);
+    transition: width 0.3s ease;
+  }
+
+  /* ---------- keyboard hint ---------- */
+  .kbd {
+    padding: 0 0.35rem;
+    background: var(--surface);
+    border: 1px solid var(--line-strong);
+    border-bottom-width: 2px;
+    border-radius: 4px;
+    font: 0.75rem/1.5 var(--font-mono);
+  }
+}

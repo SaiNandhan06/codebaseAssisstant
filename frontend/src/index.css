@@ -1,0 +1,133 @@
+@import "tailwindcss";
+
+/*
+  Codebase Assistant - global styles
+
+  Optional fonts (fallbacks apply automatically if you skip this):
+    npm i @fontsource-variable/newsreader @fontsource-variable/jetbrains-mono
+  then in src/main.tsx, BEFORE importing index.css:
+    import "@fontsource-variable/newsreader";
+    import "@fontsource-variable/jetbrains-mono";
+
+  Theme: follows the OS by default. Force one with
+    document.documentElement.dataset.theme = "light" | "dark"
+*/
+
+:root {
+  color-scheme: light dark;
+
+  /* surfaces: paper is the page, surface is raised, sunken is inset */
+  --paper:   light-dark(#f7f5ef, #211f1c);
+  --surface: light-dark(#fdfcf9, #2a2824);
+  --sunken:  light-dark(#efece3, #181714);
+
+  /* ink */
+  --ink:       light-dark(#1d1c1a, #efece3);
+  --ink-muted: light-dark(#5e5b53, #b3afa3);
+  --ink-faint: light-dark(#6b685f, #958f82);
+
+  /* hairlines */
+  --line:        light-dark(#e3dfd3, #38352f);
+  --line-strong: light-dark(#cfcabb, #4a463e);
+
+  /* accent: decorative clay, plus a stronger one that passes contrast for text and button fills */
+  --accent:        #d0693f;
+  --accent-strong: light-dark(#b5502f, #e8896a);
+  --accent-soft:   light-dark(#f4e1d6, #3a2b24);
+  --on-accent:     light-dark(#ffffff, #181714);
+
+  /* status */
+  --ok:     light-dark(#3f6b4a, #8fbf9a);
+  --warn:   light-dark(#8a5a12, #e0b25c);
+  --danger: light-dark(#a3302a, #f0877f);
+
+  /* legacy names from the old stylesheet, so existing components keep working */
+  --bg-primary:   var(--paper);
+  --bg-secondary: var(--surface);
+  --bg-tertiary:  var(--sunken);
+  --border-color: var(--line);
+  --accent-glow:  var(--accent-soft);
+}
+
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"]  { color-scheme: dark; }
+
+/* Exposes the tokens as Tailwind utilities: bg-paper, text-ink-muted, border-line, font-serif ... */
+@theme inline {
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-sunken: var(--sunken);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-faint: var(--ink-faint);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-soft: var(--accent-soft);
+  --color-on-accent: var(--on-accent);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+  --color-danger: var(--danger);
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  --font-serif: "Newsreader Variable", "Newsreader", Georgia, "Times New Roman", serif;
+  --font-mono: "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+@layer base {
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3 {
+    font-family: var(--font-serif);
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+    text-wrap: balance;
+  }
+
+  p { text-wrap: pretty; }
+
+  code, pre, kbd, samp { font-family: var(--font-mono); }
+
+  a {
+    color: var(--accent-strong);
+    text-underline-offset: 3px;
+  }
+
+  ::selection { background: var(--accent-soft); color: var(--ink); }
+  ::placeholder { color: var(--ink-faint); }
+
+  :focus-visible {
+    outline: 2px solid var(--accent-strong);
+    outline-offset: 2px;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--line-strong) transparent;
+  }
+}
+
+/* WebKit fallback for the thin scrollbar */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 4px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
