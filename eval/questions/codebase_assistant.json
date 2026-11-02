@@ -1,0 +1,143 @@
+[
+  {
+    "id": "q1",
+    "question": "Where is noise filtering for lockfiles and minified files defined?",
+    "expected_files": ["ingest/filters.py"],
+    "expected_symbols": ["should_skip_dir", "skip_reason", "looks_minified"],
+    "type": "where-is"
+  },
+  {
+    "id": "q2",
+    "question": "How does the shopping cart calculate total prices?",
+    "expected_files": ["samples/sample_class.py"],
+    "expected_symbols": ["total", "ShoppingCart"],
+    "type": "how-does"
+  },
+  {
+    "id": "q3",
+    "question": "Where is the tree-sitter AST parsing logic implemented for classes and functions?",
+    "expected_files": ["ingest/parse.py"],
+    "expected_symbols": ["parse_file", "_walk", "LANGUAGES"],
+    "type": "where-is"
+  },
+  {
+    "id": "q4",
+    "question": "How does the embedding module cache vectors and handle API rate limits?",
+    "expected_files": ["index/embed.py"],
+    "expected_symbols": ["embed_batch", "embed_single", "_calc_retry_delay"],
+    "type": "how-does"
+  },
+  {
+    "id": "q5",
+    "question": "Why does the system use Reciprocal Rank Fusion to combine BM25 and vector search?",
+    "expected_files": ["retrieve/hybrid.py"],
+    "expected_symbols": ["hybrid_search", "RRF_K"],
+    "type": "why"
+  },
+  {
+    "id": "q6",
+    "question": "How do you start an asynchronous repo ingestion job through the backend API?",
+    "expected_files": ["api/jobs.py", "api/main.py"],
+    "expected_symbols": ["start_ingest", "ingest_repo"],
+    "type": "usage"
+  },
+  {
+    "id": "q7",
+    "question": "Where is the sub-word tokenizer for snake_case and camelCase located?",
+    "expected_files": ["index/text.py"],
+    "expected_symbols": ["tokenize", "context_header"],
+    "type": "where-is"
+  },
+  {
+    "id": "q8",
+    "question": "How are citations validated against retrieved chunks after generation?",
+    "expected_files": ["generate/answer.py"],
+    "expected_symbols": ["_validate_citations", "_extract_citations"],
+    "type": "how-does"
+  },
+  {
+    "id": "q9",
+    "question": "Why are oversized functions split into overlapping parts during ingestion?",
+    "expected_files": ["ingest/pipeline.py"],
+    "expected_symbols": ["_split_oversized", "collect_chunks"],
+    "type": "why"
+  },
+  {
+    "id": "q10",
+    "question": "How does git commit history get attached to code chunks?",
+    "expected_files": ["ingest/git_history.py"],
+    "expected_symbols": ["attach_history", "file_history"],
+    "type": "how-does"
+  },
+  {
+    "id": "q11",
+    "question": "Where is markdown documentation split by headings into doc chunks?",
+    "expected_files": ["ingest/docs.py"],
+    "expected_symbols": ["collect_doc_chunks", "_split_by_headings"],
+    "type": "where-is"
+  },
+  {
+    "id": "q12",
+    "question": "How do you execute the retrieval pipeline via the command line script?",
+    "expected_files": ["scripts/try_retrieval.py"],
+    "expected_symbols": ["main"],
+    "type": "usage"
+  },
+  {
+    "id": "q13",
+    "question": "How does the cross-encoder rerank candidates and apply the confidence threshold?",
+    "expected_files": ["retrieve/rerank.py"],
+    "expected_symbols": ["rerank", "_get_reranker"],
+    "type": "how-does"
+  },
+  {
+    "id": "q14",
+    "question": "Where are the FastAPI Pydantic request and response models defined?",
+    "expected_files": ["api/models.py"],
+    "expected_symbols": ["AskRequest", "AskResponse", "IngestRequest"],
+    "type": "where-is"
+  },
+  {
+    "id": "q15",
+    "question": "Why does the generator rewrite follow-up questions before retrieval?",
+    "expected_files": ["generate/answer.py", "generate/prompts.py"],
+    "expected_symbols": ["_rewrite_query", "REWRITE_PROMPT"],
+    "type": "why"
+  },
+  {
+    "id": "q16",
+    "question": "How does the storage layer persist vectors into Qdrant and chunks to JSON?",
+    "expected_files": ["index/stores.py"],
+    "expected_symbols": ["store_vectors", "save_chunks", "build_bm25"],
+    "type": "how-does"
+  },
+  {
+    "id": "q17",
+    "question": "Where is the GitHub URL clone logic and repo size limits enforced?",
+    "expected_files": ["ingest/clone.py"],
+    "expected_symbols": ["clone_repo", "parse_github_url"],
+    "type": "where-is"
+  },
+  {
+    "id": "q18",
+    "question": "How do you stream answer tokens over Server-Sent Events?",
+    "expected_files": ["api/main.py", "generate/answer.py"],
+    "expected_symbols": ["ask_stream", "answer_stream"],
+    "type": "usage"
+  },
+  {
+    "id": "q19",
+    "question": "Why does the cross-encoder receive context headers instead of bare source code?",
+    "expected_files": ["retrieve/rerank.py", "index/text.py"],
+    "expected_symbols": ["rerank", "context_header"],
+    "type": "why"
+  },
+  {
+    "id": "q20",
+    "question": "Where are the system prompts instructing the model to cite file:line defined?",
+    "expected_files": ["generate/prompts.py"],
+    "expected_symbols": ["SYSTEM_PROMPT", "build_prompt"],
+    "type": "where-is"
+  }
+]
+

@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: codebase_assistant_qdrant
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:6333/healthz || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: codebase_assistant_api
+    ports:
+      - "8000:8000"
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+      - QDRANT_MODE=server
+      - GEN_MODEL=gemini-2.5-flash
+      - EMBED_MODEL=gemini-embedding-001
+      - RERANK_MODEL=cross-encoder/ms-marco-MiniLM-L6-v2
+      - RERANK_THRESHOLD=-5.0
+      - CORS_ORIGINS=http://localhost:5173,http://localhost:3000
+    depends_on:
+      qdrant:
+        condition: service_healthy
+    volumes:
+      - api_data:/app/data
+    restart: unless-stopped
+
+volumes:
+  qdrant_data:
+  api_data:
+
