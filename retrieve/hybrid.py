@@ -5,13 +5,16 @@ hybrid_search(query, collection, chunks_path) → top-k Chunk dicts with scores.
 """
 
 import os
+import logging
 
 from qdrant_client import QdrantClient
 from rank_bm25 import BM25Okapi
 
 from index.text import tokenize, chunk_text
 from index.embed import embed_single
-from index.stores import load_chunks, QDRANT_HOST, QDRANT_PORT
+from index.stores import load_chunks, _db
+
+logger = logging.getLogger(__name__)
 
 RRF_K = 60  # RRF smoothing constant
 
@@ -64,15 +67,24 @@ def hybrid_search(
     bm25_rank_of = {idx: rank for rank, idx in enumerate(bm25_ranked)}
 
     # ── Dense ranking (Qdrant) ────────────────────────────────────
-    db = QdrantClient(host=QDRANT_HOST, port=QDRANT_PORT)
-    query_vector = embed_single(query)
-    dense_results = db.query_points(
-        collection_name=collection,
-        query=query_vector,
-        limit=len(chunk_dicts),
-    ).points
-    # Map Qdrant point id → rank
-    dense_rank_of = {r.id: rank for rank, r in enumerate(dense_results)}
+    dense_rank_of = {}
+    try:
+        db = _db()
+        if not db.collection_exists(collection):
+            from index.stores import store_vectors
+            logger.info(f"Collection '{collection}' not found in Qdrant. Auto-populating from {chunks_path}...")
+            store_vectors(chunk_dicts, collection=collection)
+
+        if db.collection_exists(collection):
+            query_vector = embed_single(query)
+            dense_results = db.query_points(
+                collection_name=collection,
+                query=query_vector,
+                limit=len(chunk_dicts),
+            ).points
+            dense_rank_of = {r.id: rank for rank, r in enumerate(dense_results)}
+    except Exception as e:
+        logger.warning(f"Dense search warning for '{collection}': {e}. Continuing with BM25.")
 
     # ── RRF fusion ────────────────────────────────────────────────
     rrf_scores = {}

@@ -24,7 +24,7 @@ def _get_reranker() -> CrossEncoder:
 
 # ── Config ────────────────────────────────────────────────────────
 
-LOW_CONFIDENCE_THRESHOLD = float(os.getenv("RERANK_THRESHOLD", "0.5"))
+LOW_CONFIDENCE_THRESHOLD = float(os.getenv("RERANK_THRESHOLD", "-7.5"))
 
 
 # ── Public API ────────────────────────────────────────────────────
@@ -45,8 +45,17 @@ def rerank(
     if threshold is None:
         threshold = LOW_CONFIDENCE_THRESHOLD
 
+    if not chunks:
+        return [], True
+
     reranker = _get_reranker()
-    pairs = [(query, c["code"]) for c in chunks]
+    pairs = [
+        (
+            query,
+            f"{c.get('language', '')} {c.get('kind', '')} {c.get('parent') or ''} {c.get('name', '')} in {c.get('file_path', '')}\n{c.get('code', '')}"
+        )
+        for c in chunks
+    ]
     scores = reranker.predict(pairs)
 
     # Attach rerank scores

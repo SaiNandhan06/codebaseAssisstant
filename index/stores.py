@@ -79,14 +79,14 @@ def store_vectors(chunks, collection: str = COLLECTION):
             id=i,
             vector=vec,
             payload={
-                "chunk_id": chunk.id,
-                "file_path": chunk.file_path,
-                "language": chunk.language,
-                "kind": chunk.kind,
-                "name": chunk.name,
-                "parent": chunk.parent,
-                "start_line": chunk.start_line,
-                "end_line": chunk.end_line,
+                "chunk_id": chunk.id if hasattr(chunk, "id") else chunk.get("id", str(i)),
+                "file_path": chunk.file_path if hasattr(chunk, "file_path") else chunk.get("file_path", ""),
+                "language": chunk.language if hasattr(chunk, "language") else chunk.get("language", ""),
+                "kind": chunk.kind if hasattr(chunk, "kind") else chunk.get("kind", ""),
+                "name": chunk.name if hasattr(chunk, "name") else chunk.get("name", ""),
+                "parent": chunk.parent if hasattr(chunk, "parent") else chunk.get("parent"),
+                "start_line": chunk.start_line if hasattr(chunk, "start_line") else chunk.get("start_line", 0),
+                "end_line": chunk.end_line if hasattr(chunk, "end_line") else chunk.get("end_line", 0),
             },
         ))
 

@@ -17,18 +17,27 @@ def context_header(chunk) -> str:
         python | class ShoppingCart | method add_item
         samples/sample_class.py  lines 5-6
     """
-    parts = [chunk.language]
-    if chunk.parent:
-        parts.append(f"class {chunk.parent}")
-    parts.append(f"{chunk.kind} {chunk.name}")
+    lang = getattr(chunk, "language", None) or (chunk.get("language") if isinstance(chunk, dict) else "unknown")
+    parent = getattr(chunk, "parent", None) if hasattr(chunk, "parent") else (chunk.get("parent") if isinstance(chunk, dict) else None)
+    kind = getattr(chunk, "kind", None) or (chunk.get("kind") if isinstance(chunk, dict) else "code")
+    name = getattr(chunk, "name", None) or (chunk.get("name") if isinstance(chunk, dict) else "")
+    file_path = getattr(chunk, "file_path", None) or (chunk.get("file_path") if isinstance(chunk, dict) else "")
+    start_line = getattr(chunk, "start_line", 0) if hasattr(chunk, "start_line") else (chunk.get("start_line", 0) if isinstance(chunk, dict) else 0)
+    end_line = getattr(chunk, "end_line", 0) if hasattr(chunk, "end_line") else (chunk.get("end_line", 0) if isinstance(chunk, dict) else 0)
+
+    parts = [str(lang)]
+    if parent:
+        parts.append(f"class {parent}")
+    parts.append(f"{kind} {name}".strip())
     header = " | ".join(parts)
-    loc = f"{chunk.file_path}  lines {chunk.start_line}-{chunk.end_line}"
+    loc = f"{file_path}  lines {start_line}-{end_line}"
     return f"{header}\n{loc}"
 
 
 def chunk_text(chunk) -> str:
     """Full text representation used for both embedding and BM25."""
-    return f"{context_header(chunk)}\n\n{chunk.code}"
+    code = getattr(chunk, "code", "") if hasattr(chunk, "code") else (chunk.get("code", "") if isinstance(chunk, dict) else "")
+    return f"{context_header(chunk)}\n\n{code}"
 
 
 # ── Sub-word tokenizer ────────────────────────────────────────────

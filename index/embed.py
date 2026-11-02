@@ -7,6 +7,7 @@ The cache avoids re-embedding unchanged chunks across runs, saving API quota.
 import hashlib
 import json
 import os
+import re
 import time
 
 from dotenv import load_dotenv
@@ -16,7 +17,7 @@ load_dotenv()
 
 _client = genai.Client()
 
-EMBED_MODEL = "gemini-embedding-001"
+EMBED_MODEL = os.getenv("EMBED_MODEL", "gemini-embedding-001")
 EMBED_DIM = 3072          # gemini-embedding-001 output dimension
 BATCH_SIZE = 100          # Gemini batch limit
 MAX_RETRIES = 5
@@ -48,6 +49,20 @@ def _save_cache(key: str, vector: list[float]):
         json.dump(vector, f)
 
 
+def _calc_retry_delay(e: Exception, attempt: int) -> float:
+    """Calculate back-off delay, honoring 429 quota retry-after suggestions if present."""
+    msg = str(e)
+    if "429" in msg or "RESOURCE_EXHAUSTED" in msg:
+        match = re.search(r"retry in ([\d\.]+)s", msg)
+        if match:
+            return float(match.group(1)) + 1.0
+        match = re.search(r"retryDelay':\s*'(\d+)s'", msg)
+        if match:
+            return float(match.group(1)) + 1.0
+        return max(32.0, RETRY_BASE ** (attempt + 1))
+    return float(RETRY_BASE ** (attempt + 1))
+
+
 def embed_single(text: str) -> list[float]:
     """Embed a single text string, with caching and retry."""
     key = _cache_key(text)
@@ -67,8 +82,8 @@ def embed_single(text: str) -> list[float]:
         except Exception as e:
             if attempt == MAX_RETRIES - 1:
                 raise
-            wait = RETRY_BASE ** (attempt + 1)
-            print(f"  Embed retry {attempt+1}/{MAX_RETRIES} after {wait}s: {e}")
+            wait = _calc_retry_delay(e, attempt)
+            print(f"  Embed retry {attempt+1}/{MAX_RETRIES} after {wait:.1f}s: {e}")
             time.sleep(wait)
 
 
@@ -112,8 +127,8 @@ def embed_batch(texts: list[str]) -> list[list[float]]:
             except Exception as e:
                 if attempt == MAX_RETRIES - 1:
                     raise
-                wait = RETRY_BASE ** (attempt + 1)
-                print(f"  Batch embed retry {attempt+1}/{MAX_RETRIES} after {wait}s: {e}")
+                wait = _calc_retry_delay(e, attempt)
+                print(f"  Batch embed retry {attempt+1}/{MAX_RETRIES} after {wait:.1f}s: {e}")
                 time.sleep(wait)
 
         # Small pause between batches to stay under rate limits

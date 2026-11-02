@@ -19,6 +19,13 @@ import sys
 import time
 from collections import Counter
 
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
 from ingest.pipeline import collect_chunks
 from ingest.git_history import attach_history
 from index.text import chunk_text

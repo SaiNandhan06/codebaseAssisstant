@@ -22,7 +22,7 @@ MAX_REPO_SIZE_MB = int(os.getenv("MAX_REPO_SIZE_MB", "200"))
 # ── URL validation ────────────────────────────────────────────────
 
 _GITHUB_RE = re.compile(
-    r"^https://github\.com/(?P<owner>[A-Za-z0-9._-]+)/(?P<name>[A-Za-z0-9._-]+?)(?:\.git)?$"
+    r"^(?:https?://)?(?:www\.)?github\.com/(?P<owner>[A-Za-z0-9._-]+)/(?P<name>[A-Za-z0-9._-]+?)(?:\.git)?(?:/.*)?$"
 )
 
 
@@ -60,6 +60,7 @@ def clone_repo(url: str, force: bool = False) -> dict:
     """
     owner, name = parse_github_url(url)
     rid = f"{owner}__{name}"
+    canonical_url = f"https://github.com/{owner}/{name}"
     clone_path = os.path.join(REPOS_DIR, rid)
 
     if os.path.exists(clone_path):
@@ -72,13 +73,13 @@ def clone_repo(url: str, force: bool = False) -> dict:
                 "repo_id": rid,
                 "clone_path": clone_path,
                 "head_sha": repo.head.commit.hexsha,
-                "url": url,
+                "url": canonical_url,
             }
 
     os.makedirs(REPOS_DIR, exist_ok=True)
 
     # Shallow clone (depth=1)
-    git_url = url if url.endswith(".git") else url + ".git"
+    git_url = f"{canonical_url}.git"
     repo = Repo.clone_from(git_url, clone_path, depth=1)
 
     head_sha = repo.head.commit.hexsha
