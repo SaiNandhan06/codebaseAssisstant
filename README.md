@@ -24,7 +24,7 @@
 * **Dual-Engine Hybrid Retrieval**: Fuses sub-word tokenized BM25 (sparse lexical) and Google Gemini 3072-dimensional embeddings (dense semantic) via **Reciprocal Rank Fusion (RRF $k=60$)**.
 * **Logit-Gated Hallucination Shield**: Re-ranks top candidates with `cross-encoder/ms-marco-MiniLM-L6-v2`. A calibrated logit threshold ($\tau = -7.5$) blocks out-of-domain queries before generation, preventing hallucinations.
 * **Verified Inline Citations**: Answers stream with `[file:start-end]` chips. Every interval is programmatically validated against retrieved chunks before rendering.
-* **Interactive Code Inspector**: Clicking any citation opens an embedded side-by-side code viewer with cited line ranges highlighted (`.code-line--hit`).
+* **Interactive licking any citation opens an embedded side-by-side code viewer with cited line ranges highlighted (`.code-line--hit`).
 * **Multi-Repository Isolation**: Ingest any public GitHub repository on the fly with per-repo isolated vector collections and commit history provenance.
 * **Self-Healing & Fault-Tolerant**: SHA-256 disk-backed embedding cache, auto-rebuilding vector collections, and exponential backoff retry wrappers absorbing Gemini API 503/429 spikes.
 
