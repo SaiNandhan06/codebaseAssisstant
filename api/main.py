@@ -64,11 +64,29 @@ DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__
 
 
 def _repo_collection_and_chunks(repo_id: str) -> tuple[str, str]:
-    collection = "code_chunks" if repo_id == "codebase-assistant" else f"code_{repo_id}"
-    chunks_file = f"chunks_{repo_id}.json"
+    info = get_repo(repo_id)
+    canonical_id = info.get("repo_id") if info else repo_id
+
+    collection = "code_chunks" if canonical_id == "codebase-assistant" else f"code_{canonical_id}"
+    chunks_file = f"chunks_{canonical_id}.json"
+
     if not os.path.exists(os.path.join(DATA_DIR, chunks_file)):
-        if os.path.exists(os.path.join(DATA_DIR, "chunks.json")):
+        # Fallback: scan for matching chunk file regardless of underscore formatting
+        if os.path.exists(DATA_DIR):
+            for fname in os.listdir(DATA_DIR):
+                if fname.startswith("chunks_") and fname.endswith(".json"):
+                    cand = fname[len("chunks_"):-len(".json")]
+                    if cand.replace("__", "_").lower() == repo_id.replace("__", "_").lower():
+                        canonical_id = cand
+                        chunks_file = fname
+                        collection = f"code_{canonical_id}"
+                        break
+            else:
+                if os.path.exists(os.path.join(DATA_DIR, "chunks.json")):
+                    chunks_file = "chunks.json"
+        elif os.path.exists(os.path.join(DATA_DIR, "chunks.json")):
             chunks_file = "chunks.json"
+
     return collection, chunks_file
 
 

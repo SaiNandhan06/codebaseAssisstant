@@ -92,12 +92,30 @@ def list_repos() -> list[dict]:
 
 
 def get_repo(repo_id: str) -> dict | None:
-    """Get repo info by repo_id."""
+    """Get repo info by repo_id with flexible fallback matching."""
     with _job_lock:
         _discover_persisted_repos()
+        
+        # 1. Exact match
         for job in _jobs.values():
             if job.get("repo_id") == repo_id:
                 return job.copy()
+
+        # 2. Flexible normalization (single vs double underscore, case-insensitive)
+        clean_target = repo_id.replace("__", "_").lower().strip()
+        for job in _jobs.values():
+            jid = job.get("repo_id", "")
+            if jid.replace("__", "_").lower().strip() == clean_target:
+                return job.copy()
+
+        # 3. Match repo name suffix (e.g. "ResolveNow" -> "SaiNandhan06__ResolveNow")
+        for job in _jobs.values():
+            jid = job.get("repo_id", "")
+            if "__" in jid and jid.split("__")[-1].lower() == clean_target:
+                return job.copy()
+            if "_" in jid and jid.split("_")[-1].lower() == clean_target:
+                return job.copy()
+
     return None
 
 
